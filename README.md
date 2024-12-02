@@ -28,6 +28,7 @@ python ./create_tiles.py
 | Day                                           | Test                                                                        | Solution                                                            | Tile                               |
 |-----------------------------------------------|-----------------------------------------------------------------------------|---------------------------------------------------------------------|------------------------------------|
 | [Day 01](https://adventofcode.com/2024/day/1) | [Day01Test.kt](./src/test/kotlin/tr/emreone/adventofcode/days/Day01Test.kt) | [Day01.kt](./src/main/kotlin/tr/emreone/adventofcode/days/Day01.kt) | ![Day 01](./aoc_tiles/2024/01.png) |
+| [Day 02](https://adventofcode.com/2024/day/2) | [Day02Test.kt](./src/test/kotlin/tr/emreone/adventofcode/days/Day02Test.kt) | [Day02.kt](./src/main/kotlin/tr/emreone/adventofcode/days/Day02.kt) | ![Day 02](./aoc_tiles/2023/02.png) |
 <!-- $1 -->
 
 ---

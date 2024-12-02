@@ -32,6 +32,8 @@ import yaml
 from PIL.ImageDraw import ImageDraw
 from PIL import ImageFont
 
+YEAR = 2024
+
 # This results in the parent directory of the script directory, the year directories should be here
 SOURCE_CODE_DIR = Path(__file__).absolute().parent.parent
 
@@ -43,7 +45,7 @@ IMAGE_DIR = SOURCE_CODE_DIR / "aoc_tiles"
 README_PATH = SOURCE_CODE_DIR / "README.md"
 
 # Path to the cookie session file
-SESSION_COOKIE_PATH = SOURCE_CODE_DIR / "session.cookie"
+SESSION_COOKIE_PATH = SOURCE_CODE_DIR / "src/main/resources/session.cookie"
 
 DAY_IMPLEMENTATION_DIR = SOURCE_CODE_DIR / "src/main/kotlin/tr/emreone/adventofcode/days"
 
@@ -68,7 +70,7 @@ CONTRAST_IMPROVEMENT_TYPE: Literal["none", "outline", "dark"] = "outline"
 
 
 # You can change this code entirely, or just change patterns above. You get more control if you change the code.
-def get_solution_paths_dict_for_years() -> dict[int, dict[int, list[str]]]:
+def get_solution_paths_dict_for_years(year) -> dict[int, dict[int, list[str]]]:
     """Returns a dictionary which maps years to days to a list of solution paths,
 
     E.g.: {2022: {1: [Path("2022/01/01.py"), Path("2022/01/01.kt")], ...}}
@@ -84,19 +86,20 @@ def get_solution_paths_dict_for_years() -> dict[int, dict[int, list[str]]]:
     solution_paths_dict: dict[int, dict[int, list[str]]] = {}
 
     # If you use a new repo for years you might just remove this if, and assign the year manually
-    for year_dir in sorted(get_paths_matching_regex(IMAGE_DIR, YEAR_PATTERN), reverse=True):
-        year = find_first_number(year_dir.name)
-        solution_paths_dict[year] = {}
-        # If you have a deep structure then you can adjust the year dir as well:
-        # year_dir = year_dir / "src/main/kotlin/com/example/aoc"
+    # for year_dir in sorted(get_paths_matching_regex(IMAGE_DIR, YEAR_PATTERN), reverse=True):
+        # year = find_first_number(year_dir.name)
 
-        for day_file in get_paths_matching_regex(DAY_IMPLEMENTATION_DIR, DAY_PATTERN):
-            day = find_first_number(day_file.name)
-            solutions = [day_file]
+    solution_paths_dict[year] = {}
+    # If you have a deep structure then you can adjust the year dir as well:
+    # year_dir = year_dir / "src/main/kotlin/com/example/aoc"
 
-            solutions = [solution.relative_to(SOURCE_CODE_DIR) for solution in solutions]
+    for day_file in get_paths_matching_regex(DAY_IMPLEMENTATION_DIR, DAY_PATTERN):
+        day = find_first_number(day_file.name)
+        solutions = [day_file]
 
-            solution_paths_dict[year][day] = [s.as_posix() for s in solutions]
+        solutions = [solution.relative_to(SOURCE_CODE_DIR) for solution in solutions]
+
+        solution_paths_dict[year][day] = [s.as_posix() for s in solutions]
     return solution_paths_dict
 
 
@@ -423,10 +426,11 @@ def handle_year(year: int, day_to_solutions: dict[int, list[str]]):
 
 
 def main():
-    for year, day_to_solutions_list in get_solution_paths_dict_for_years().items():
+    for year, day_to_solutions_list in get_solution_paths_dict_for_years(YEAR).items():
         print(f"=== Generating table for year {year} ===")
         handle_year(year, day_to_solutions_list)
 
 
 if __name__ == "__main__":
+    print("Creating tiles for Advent of Code")
     main()

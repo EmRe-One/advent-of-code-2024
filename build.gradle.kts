@@ -117,7 +117,7 @@ tasks.register("prepareNextDay") {
                 file(readmeFile).readText()
                     .replace(
                         "<!-- $1 -->", """
-                            | [Day ${nextDay}](https://adventofcode.com/2024/day/${day}) | [Day${nextDay}Test.kt](./src/test/kotlin/tr/emreone/adventofcode/days/Day${nextDay}Test.kt) | [Day${nextDay}.kt](./src/main/kotlin/tr/emreone/adventofcode/days/Day${nextDay}.kt) | ![Day ${nextDay}](./aoc_tiles/2023/${nextDay}.png) |
+                            | [Day ${nextDay}](https://adventofcode.com/2024/day/${day}) | [Day${nextDay}Test.kt](./src/test/kotlin/tr/emreone/adventofcode/days/Day${nextDay}Test.kt) | [Day${nextDay}.kt](./src/main/kotlin/tr/emreone/adventofcode/days/Day${nextDay}.kt) | ![Day ${nextDay}](./aoc_tiles/2024/${nextDay}.png) |
                             ${"<!-- $1 -->"}
                         """.trimIndent()
                     )

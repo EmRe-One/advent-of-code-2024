@@ -2,7 +2,6 @@ package tr.emreone.adventofcode.days
 
 import tr.emreone.kotlin_utils.Resources
 import tr.emreone.kotlin_utils.automation.Day
-import tr.emreone.kotlin_utils.extensions.area
 import tr.emreone.kotlin_utils.math.Direction4
 import tr.emreone.kotlin_utils.math.Point
 import tr.emreone.kotlin_utils.math.areaOf

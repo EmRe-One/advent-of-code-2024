@@ -11,7 +11,7 @@ import tr.emreone.kotlin_utils.math.y
 class Day04 : Day(
     4,
     2024,
-    "",
+    "Ceres Search",
     session = Resources.resourceAsString("session.cookie")
 ) {
 

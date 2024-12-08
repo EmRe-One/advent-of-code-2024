@@ -18,35 +18,34 @@ class Day06 : Day(
 
     val obstructions = mutableListOf<Point>()
     var startingPosition: Point = Point(0, 0)
+    val visitedCells = emptySet<Point>().toMutableSet()
 
-    override fun part1(): Int {
+    init {
         inputAsGrid.forEachIndexed { y, row ->
             row.forEachIndexed { x, cell ->
                 if (cell == '#') {
                     obstructions.add(Point(x, y))
-                }
-                else if (cell == '^') {
+                } else if (cell == '^') {
                     startingPosition = Point(x, y)
                 }
             }
         }
+    }
 
+    override fun part1(): Int {
         val area = areaOf(0 to 0, inputAsGrid.size - 1 to inputAsGrid[0].size - 1)
-        val visitedCells = emptySet<Point>().toMutableSet()
         var currentCell = startingPosition
         var currentDirection = Direction4.NORTH
 
         visitedCells.add(currentCell)
-        while(true) {
+        while (true) {
             val neighborCell = currentCell.neighbor(currentDirection, 1)
             if (neighborCell in obstructions) {
                 currentDirection = turnRight(currentDirection)
-            }
-            else if (area.contains(neighborCell)) {
+            } else if (area.contains(neighborCell)) {
                 currentCell = neighborCell
                 visitedCells.add(currentCell)
-            }
-            else {
+            } else {
                 break
             }
         }
@@ -54,12 +53,45 @@ class Day06 : Day(
         return visitedCells.size
     }
 
-    override fun part2(): Long {
-        return 0
+    override fun part2(): Int {
+        val area = areaOf(0 to 0, inputAsGrid.size - 1 to inputAsGrid[0].size - 1)
+        val obstructionForLoops = mutableListOf<Point>()
+        assert(visitedCells.isNotEmpty()) {
+            "Part 1 should be run before part 2"
+        }
+
+        visitedCells.forEach { point ->
+
+            val visitedCells = emptySet<Pair<Point, Direction4>>().toMutableSet()
+            val tempObstructions = obstructions.toMutableList()
+
+            var currentCell = startingPosition
+            var currentDirection = Direction4.NORTH
+            tempObstructions.add(point)
+            visitedCells.add(currentCell to currentDirection)
+
+            while (true) {
+                val neighborCell = currentCell.neighbor(currentDirection, 1)
+                if (neighborCell in tempObstructions) {
+                    currentDirection = turnRight(currentDirection)
+                } else if (area.contains(neighborCell)) {
+                    currentCell = neighborCell
+                    if (visitedCells.contains(currentCell to currentDirection)) {
+                        obstructionForLoops.add(point)
+                        return@forEach
+                    }
+                    visitedCells.add(currentCell to currentDirection)
+                } else {
+                    break
+                }
+            }
+        }
+
+        return obstructionForLoops.size
     }
 
     private fun turnRight(direction: Direction4): Direction4 {
-        return when(direction) {
+        return when (direction) {
             Direction4.NORTH -> Direction4.EAST
             Direction4.EAST -> Direction4.SOUTH
             Direction4.SOUTH -> Direction4.WEST

@@ -10,70 +10,103 @@ class Day09 : Day(
     session = Resources.resourceAsString("session.cookie")
 ) {
 
+    data class File(val id: Int, var size: Int)
+
     override fun part1(): Long {
-        // Step 1: Parse the disk map into file positions and free spaces
-        val (filePositions, freeSpaces) = parseDiskMap(inputAsString)
-        println(filePositions)
-        println(freeSpaces)
+        val (disk, files) = parseDiskMap(inputAsString)
 
-        // Step 2: Simulate the compacting process
-        val compactedPositions = compactFiles(filePositions, freeSpaces.map { it.second }.toMutableList())
+        val compactedDisk = compactDisk(disk, files)
 
-        // Step 3: Calculate the checksum
-        return calculateChecksum(compactedPositions)
+        return calculateChecksum(compactedDisk)
     }
 
     override fun part2(): Long {
-        return 0
+        val (disk, files) = parseDiskMap(inputAsString)
+
+        val compactedDisk = compactDisk2(disk.toMutableList(), files)
+
+        return calculateChecksum(compactedDisk)
     }
 
-    private fun parseDiskMap(diskMap: String): Pair<MutableList<Pair<Int, Int>>, MutableList<Pair<Int, Int>>> {
-        val filePositions = mutableListOf<Pair<Int, Int>>() // Pair(start index, length)
-        val freeSpaces = mutableListOf<Pair<Int, Int>>() // List of indices of free spaces
-
-        var currentIndex = 0
-        var isFile = true
+    private fun parseDiskMap(input: String): Pair<MutableList<Any>, MutableList<File>> {
+        val disk = mutableListOf<Any>()
+        val files = mutableListOf<File>()
         var fileId = 0
-
-        for (i in diskMap.indices) {
-            val length = diskMap[i].digitToInt()
+        var isFile = true
+        var i = 0
+        while (i < input.length) {
             if (isFile) {
-                filePositions.add(Pair(currentIndex, length))
-                fileId++
+                val fileSize = input[i].digitToInt()
+                repeat(fileSize) { disk.add(fileId) }
+                files.add(File(fileId++, fileSize))
             } else {
-                freeSpaces.add(Pair(currentIndex, length))
+                val freeSpace = input[i].digitToInt()
+                repeat(freeSpace) { disk.add(".") }
             }
-            currentIndex += length
+
+            i++
             isFile = !isFile
         }
-        return Pair(filePositions, freeSpaces)
+        return Pair(disk, files)
     }
 
-    // Simulate compacting files into the leftmost free spaces
-    private fun compactFiles(
-        filePositions: MutableList<Pair<Int, Int>>,
-        freeSpaces: MutableList<Int>
-    ): List<Pair<Int, Int>> {
-        val freeSpaceIterator = freeSpaces.iterator()
-        val compactedPositions = mutableListOf<Pair<Int, Int>>()
+    private fun compactDisk(disk: MutableList<Any>, files: MutableList<File>): MutableList<Any> {
+        var freeSpaceIndex = disk.indexOfFirst { it == "." }
+        var currentFileIndex = disk.lastIndex
 
-        for ((start, length) in filePositions) {
-            var compactStart = start
-            while (freeSpaceIterator.hasNext() && freeSpaceIterator.next() < start) {
-                compactStart--
+        while (freeSpaceIndex != -1 && currentFileIndex > freeSpaceIndex) {
+            if (disk[currentFileIndex] != ".") {
+                disk[freeSpaceIndex] = disk[currentFileIndex]
+                disk[currentFileIndex] = "."
+                freeSpaceIndex = disk.indexOfFirst { it == "." }
             }
-            compactedPositions.add(Pair(compactStart, length))
+            currentFileIndex--
         }
-        return compactedPositions
+        return disk
+    }
+
+    private fun compactDisk2(disk: MutableList<Any>, files: List<File>): List<Any> {
+        for (fileId in files.indices.reversed()) {
+            val file = files[fileId]
+            val fileSize = file.size
+            val startIndex = disk.indexOf(fileId)
+            val endIndex = startIndex + fileSize - 1
+
+            // Finde den am weitesten links liegenden freien Speicherplatz, der groß genug ist
+            var bestFreeSpaceStart = -1
+            var freeSpaceStart = -1
+            var freeSpaceCount = 0
+            for (i in 0 until startIndex) {
+                if (disk[i] == ".") {
+                    if (freeSpaceCount == 0) {
+                        freeSpaceStart = i
+                    }
+                    freeSpaceCount++
+                    if (freeSpaceCount >= fileSize && (bestFreeSpaceStart == -1 || freeSpaceStart < bestFreeSpaceStart)) {
+                        bestFreeSpaceStart = freeSpaceStart
+                    }
+                } else {
+                    freeSpaceCount = 0
+                }
+            }
+
+            // Verschiebe die Datei, falls genügend freier Speicherplatz gefunden wurde
+            if (bestFreeSpaceStart != -1) {
+                for (i in endIndex downTo startIndex) {
+                    disk[bestFreeSpaceStart + endIndex - i] = disk[i]
+                    disk[i] = "."
+                }
+            }
+        }
+        return disk
     }
 
     // Calculate the checksum
-    private fun calculateChecksum(filePositions: List<Pair<Int, Int>>): Long {
+    private fun calculateChecksum(disk: List<Any>): Long {
         var checksum = 0L
-        for ((fileId, position) in filePositions.withIndex()) {
-            val (start, length) = position
-            for (offset in 0 until length) {
-                checksum += (start + offset) * fileId
+        for (i in disk.indices) {
+            if (disk[i] is Int) {
+                checksum += i * (disk[i] as Int).toLong()
             }
         }
         return checksum

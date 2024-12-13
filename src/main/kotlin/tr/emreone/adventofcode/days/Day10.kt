@@ -2,6 +2,7 @@ package tr.emreone.adventofcode.days
 
 import tr.emreone.kotlin_utils.Resources
 import tr.emreone.kotlin_utils.automation.Day
+import tr.emreone.kotlin_utils.math.Point
 
 class Day10 : Day(
     10,
@@ -10,66 +11,92 @@ class Day10 : Day(
     session = Resources.resourceAsString("session.cookie")
 ) {
 
+    private val mapData = inputAsList.map { line -> line.map { it.toString().toInt() } }
+    private val trailheads = findTrailheads(this.mapData)
+
     override fun part1(): Int {
-        val input = inputAsGrid.map { row -> row.map { cell -> cell.digitToInt() } }
-        return calculateTotalScore(input)
-    }
-
-    override fun part2(): Long {
-        return 0
-    }
-
-    private fun findHikingTrails(map: List<MutableList<Int>>, startRow: Int, startCol: Int): List<List<Pair<Int, Int>>> {
-        val trails = mutableListOf<List<Pair<Int, Int>>>()
-        val currentTrail = mutableListOf<Pair<Int, Int>>()
-
-        fun explore(row: Int, col: Int) {
-            // Überprüfen, ob die Position gültig ist
-            if (row < 0 || row >= map.size || col < 0 || col >= map[0].size || map[row][col] == -1) {
-                return
-            }
-
-            // Aktuelle Position zum Weg hinzufügen
-            currentTrail.add(Pair(row, col))
-
-            // Überprüfen, ob das Ziel erreicht ist
-            if (map[row][col] == 9) {
-                trails.add(currentTrail.toList())
-                currentTrail.removeLast()
-                return
-            }
-
-            // Markiere die aktuelle Position als besucht
-            val currentHeight = map[row][col]
-            map[row][col] = -1
-
-            // Erkunde die Nachbarpositionen
-            explore(row + 1, col) // Nach unten
-            explore(row - 1, col) // Nach oben
-            explore(row, col + 1) // Nach rechts
-            explore(row, col - 1) // Nach links
-
-            // Stelle den ursprünglichen Höhenwert wieder her
-            map[row][col] = currentHeight
-
-            // Entferne die aktuelle Position vom Weg
-            currentTrail.removeLast()
+        return this.trailheads.sumOf {
+            bfsCountNines(this.mapData, it)
         }
-
-        explore(startRow, startCol)
-        return trails
     }
 
-    private fun calculateTotalScore(map: List<List<Int>>): Int {
-        var totalScore = 0
-        for (row in map.indices) {
-            for (col in map[0].indices) {
-                if (map[row][col] == 0) {
-                    val trails = findHikingTrails(map.map { it.toMutableList() }, row, col) // Kopie der Karte erstellen
-                    totalScore += trails.size
+    override fun part2(): Int {
+        return this.trailheads.sumOf {
+            bfsTrailCountWithRating(this.mapData, it)
+        }
+    }
+
+    private fun findTrailheads(topographicMap: List<List<Int>>): List<Point> {
+        val trailheads = mutableListOf<Point>()
+        for (y in topographicMap.indices) {
+            for (x in topographicMap[y].indices) {
+                if (topographicMap[y][x] == 0) {
+                    trailheads.add(Pair(x, y))
                 }
             }
         }
-        return totalScore
+        return trailheads
     }
+
+    private fun bfsCountNines(mapData: List<List<Int>>, start: Point): Int {
+        val rows = mapData.size
+        val cols = mapData[0].size
+        val queue = mutableListOf(start)
+        val visited = mutableSetOf(start)
+        var reachableNines = 0
+
+        while (queue.isNotEmpty()) {
+            val (x, y) = queue.removeFirst()
+
+            listOf(Pair(-1, 0), Pair(1, 0), Pair(0, -1), Pair(0, 1)).forEach { (dx, dy) ->
+                val nx = x + dx
+                val ny = y + dy
+
+                if (ny in 0 until rows && nx in 0 until cols && Pair(nx, ny) !in visited) {
+                    if (mapData[ny][nx] == mapData[y][x] + 1) { // Valid trail step
+                        visited.add(Pair(nx, ny))
+                        queue.add(Pair(nx, ny))
+
+                        if (mapData[ny][nx] == 9) {
+                            reachableNines++
+                        }
+                    }
+                }
+            }
+        }
+
+        return reachableNines
+    }
+
+    private fun bfsTrailCountWithRating(mapData: List<List<Int>>, start: Point): Int {
+        val rows = mapData.size
+        val cols = mapData[0].size
+        val queue = mutableListOf(Pair(start, mutableListOf(start))) // Pair of current position and trail
+        var trailCount = 0
+
+        while (queue.isNotEmpty()) {
+            val (current, trail) = queue.removeFirst()
+            val (x, y) = current
+
+            listOf(Pair(-1, 0), Pair(1, 0), Pair(0, -1), Pair(0, 1)).forEach { (dx, dy) ->
+                val nx = x + dx
+                val ny = y + dy
+
+                if (ny in 0 until rows && nx in 0 until cols && !trail.contains(Pair(nx, ny))) {
+                    if (mapData[ny][nx] == mapData[y][x] + 1) { // Valid trail step
+                        val newTrail = trail.toMutableList()
+                        newTrail.add(Pair(nx, ny))
+
+                        if (mapData[ny][nx] == 9) {
+                            trailCount++
+                        } else {
+                            queue.add(Pair(Pair(nx, ny), newTrail))
+                        }
+                    }
+                }
+            }
+        }
+        return trailCount
+    }
+
 }

@@ -37,6 +37,7 @@ python ./create_tiles.py
 | [Day 08](https://adventofcode.com/2024/day/8) | [Day08Test.kt](./src/test/kotlin/tr/emreone/adventofcode/days/Day08Test.kt) | [Day08.kt](./src/main/kotlin/tr/emreone/adventofcode/days/Day08.kt) | ![Day 08](./aoc_tiles/2024/08.png) |
 | [Day 09](https://adventofcode.com/2024/day/9) | [Day09Test.kt](./src/test/kotlin/tr/emreone/adventofcode/days/Day09Test.kt) | [Day09.kt](./src/main/kotlin/tr/emreone/adventofcode/days/Day09.kt) | ![Day 09](./aoc_tiles/2024/09.png) |
 | [Day 10](https://adventofcode.com/2024/day/10) | [Day10Test.kt](./src/test/kotlin/tr/emreone/adventofcode/days/Day10Test.kt) | [Day10.kt](./src/main/kotlin/tr/emreone/adventofcode/days/Day10.kt) | ![Day 10](./aoc_tiles/2024/10.png) |
+| [Day 11](https://adventofcode.com/2024/day/11) | [Day11Test.kt](./src/test/kotlin/tr/emreone/adventofcode/days/Day11Test.kt) | [Day11.kt](./src/main/kotlin/tr/emreone/adventofcode/days/Day11.kt) | ![Day 11](./aoc_tiles/2024/11.png) |
 <!-- $1 -->
 
 ---

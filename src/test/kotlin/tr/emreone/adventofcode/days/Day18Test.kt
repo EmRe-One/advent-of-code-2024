@@ -5,9 +5,9 @@ import tr.emreone.kotlin_utils.automation.solve
 
 fun main() {
 
-    solve<Day13>(false) {
-        Resources.resourceAsList("day13_example.txt")
-            .joinToString("\n") part1 480 part2 0
+    solve<Day18>(false) {
+        Resources.resourceAsList("day18_example.txt")
+            .joinToString("\n") part1 22 part2 "6,1"
     }
 
 }

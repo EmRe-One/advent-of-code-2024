@@ -2,6 +2,9 @@ package tr.emreone.adventofcode.days
 
 import tr.emreone.kotlin_utils.Resources
 import tr.emreone.kotlin_utils.automation.Day
+import tr.emreone.kotlin_utils.math.Point
+import tr.emreone.kotlin_utils.math.x
+import tr.emreone.kotlin_utils.math.y
 import java.util.*
 
 class Day12 : Day(
@@ -11,70 +14,101 @@ class Day12 : Day(
     session = Resources.resourceAsString("session.cookie")
 ) {
 
-    override fun part1(): Int {
-        val gardenMap = inputAsList
+    // Directions for moving up, right, down, left
 
-        val rows = gardenMap.size
-        val cols = gardenMap[0].length
-        val visited = Array(rows) { BooleanArray(cols) }
-        var totalCost = 0
+    class Garden(private val input: List<String>) {
+        private val garden = input.map { it.toList() }
+        val height = garden.size
+        val width = garden[0].size
 
-        // Directions for moving up, right, down, left
-        val directions = listOf(Pair(0, -1), Pair(1, 0), Pair(0, 1), Pair(-1, 0))
+        private val directions = listOf(Pair(0, -1), Pair(1, 0), Pair(0, 1), Pair(-1, 0))
+        val regions = mutableListOf<Pair<Char, MutableList<Point>>>()
 
-        // Function to perform flood-fill
-        fun floodFill(x: Int, y: Int, plantType: Char): Pair<Int, Int> {
-            val stack = mutableListOf(Pair(x, y))
-            var area = 0
-            var perimeter = 0
-
-            while (stack.isNotEmpty()) {
-                val (xx, yy) = stack.removeAt(stack.size - 1)
-
-                if (yy !in 0 until rows || xx !in 0 until cols || visited[yy][xx] || gardenMap[yy][xx] != plantType) {
-                    continue
-                }
-
-                visited[yy][xx] = true
-                area++
-
-                // Check neighbors for perimeter and add valid neighbors to stack
-                for ((dx, dy) in directions) {
-                    val nx = xx + dx
-                    val ny = yy + dy
-                    if (ny !in 0 until rows || nx !in 0 until cols || gardenMap[ny][nx] != plantType) {
-                        perimeter++ // Edge of region or boundary
-                    } else if (!visited[ny][nx]) {
-                        stack.add(Pair(nx, ny))
+        fun analyzeMap() {
+            val visited = Array(this.height) { BooleanArray(this.width) }
+            for (y in 0 until this.height) {
+                for (x in 0 until this.width) {
+                    if (!visited[y][x]) {
+                        val region = mutableListOf<Point>()
+                        val plantType = getPlantTypeAt(x, y)
+                        floodFill(visited, Point(x, y), plantType, region)
+                        regions.add(plantType to region)
                     }
                 }
             }
-
-            return area to perimeter
         }
 
-        // Iterate through each cell in the map
-        for (y in 0 until rows) {
-            for (x in 0 until cols) {
-                if (!visited[y][x]) {
-                    val plantType = gardenMap[y][x]
-                    val (area, perimeter) = floodFill(x, y, plantType)
-                    totalCost += area * perimeter
+        fun getPlantTypeAt(x: Int, y: Int): Char {
+            return garden[y][x]
+        }
+
+        fun floodFill(
+            visited: Array<BooleanArray>,
+            p: Point,
+            plantType: Char,
+            region: MutableList<Point>
+        ) {
+            if (p.y < 0 || p.y >= this.height || p.x < 0 || p.x >= width || visited[p.y][p.x] || this.garden[p.y][p.x] != plantType) {
+                return
+            }
+
+            visited[p.y][p.x] = true
+            region.add(p)
+
+            for ((dx, dy) in directions) {
+                val nx = p.x + dx
+                val ny = p.y + dy
+
+                floodFill(visited, Point(nx, ny), plantType, region)
+            }
+        }
+
+        fun calculatePerimeter(plantType: Char, region: List<Pair<Int, Int>>): Int {
+            return region.sumOf { (x, y) ->
+                directions.count { (dx, dy) ->
+                    val nx = x + dx
+                    val ny = y + dy
+
+                    nx < 0 || nx >= width || ny < 0 || ny >= height || garden[ny][nx] != plantType
                 }
             }
         }
 
-        return totalCost
+        fun calculateSides(plantType: Char, region: List<Pair<Int, Int>>): Int {
+            var perimeter = this.calculatePerimeter(plantType, region)
+
+            // Korrektur für innere Kanten
+            var innerEdges = 0
+            for ((y, x) in region) {
+                if (y > 0 && garden[y - 1][x] == plantType) innerEdges++
+                if (y < this.height - 1 && garden[y + 1][x] == plantType) innerEdges++
+                if (x > 0 && garden[y][x - 1] == plantType) innerEdges++
+                if (x < this.width - 1 && garden[y][x + 1] == plantType) innerEdges++
+            }
+            perimeter -= innerEdges / 2 // Jede innere Kante wird zweimal gezählt
+
+            return perimeter
+        }
+    }
+
+    override fun part1(): Int {
+        val garden = Garden(inputAsList)
+        garden.analyzeMap()
+
+        return garden.regions.sumOf { (plantType, region) ->
+            val perimeter = garden.calculatePerimeter(plantType, region)
+            println("Plant type: $plantType, region: $region, size: ${region.size}, perimeter: $perimeter")
+            region.size * perimeter
+        }
     }
 
     override fun part2(): Int {
-        val gardenMap = inputAsList
-        val rows = gardenMap.size
-        val cols = gardenMap[0].length
-        val visited = Array(rows) { BooleanArray(cols) }
+        val garden = Garden(inputAsList)
+
+        val visited = Array(garden.height) { BooleanArray(garden.width) }
         var totalPrice = 0
 
-        // Helper function for flood-fill
+        /*// Helper function for flood-fill
         fun floodFillAndCalculateSides(x: Int, y: Int, plantType: Char): Pair<Int, Int> {
             // Directions for moving up, right, down, left
             val directions = listOf(Pair(0, -1), Pair(1, 0), Pair(0, 1), Pair(-1, 0))
@@ -133,7 +167,7 @@ class Day12 : Day(
                 }
             }
         }
-
+*/
         return totalPrice
     }
 }

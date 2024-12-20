@@ -6,7 +6,6 @@ import tr.emreone.kotlin_utils.math.Point
 import tr.emreone.kotlin_utils.math.x
 import tr.emreone.kotlin_utils.math.y
 import java.util.*
-import kotlin.math.abs
 
 class Day20 : Day(
     20,
@@ -15,12 +14,33 @@ class Day20 : Day(
     session = Resources.resourceAsString("session.cookie")
 ) {
 
+    override fun part1(): Int {
+        val limit = if (inputAsList.size < 20) 10 else 100
+        val racetrack = Racetrack(inputAsList)
+
+        val fastestLegalTime = racetrack.findFastestLegalTime(racetrack.start, racetrack.end)
+        val cheats = racetrack.findCheats(2, fastestLegalTime)
+
+        return cheats.count { it.timeSaved >= limit }
+    }
+
+    override fun part2(): Int {
+        val limit = if (inputAsList.size < 20) 70 else 100
+        val racetrack = Racetrack(inputAsList)
+
+        val fastestLegalTime = racetrack.findFastestLegalTime(racetrack.start, racetrack.end)
+        val cheats = racetrack.findCheats(20, fastestLegalTime)
+
+        return cheats.count { it.timeSaved >= limit }
+    }
+
     data class Cheat(val start: Point, val end: Point, val timeSaved: Int)
 
     class Racetrack(input: List<String>) {
         private val directions = listOf(Point(1, 0), Point(0, 1), Point(-1, 0), Point(0, -1))
 
         private val map = input.map { it.toCharArray() }
+        private val cachedTimes = mutableMapOf<Pair<Point, Point>, Int>()
         private val height = map.size
         private val width = map[0].size
         val start = findStart(input)
@@ -49,6 +69,11 @@ class Day20 : Day(
         }
 
         fun findFastestLegalTime(from: Point, to: Point): Int {
+            val key = Pair(from, to)
+            if (key in cachedTimes) {
+                return cachedTimes[key]!!
+            }
+
             val queue: Queue<Pair<Point, Int>> = LinkedList()
             val visited = mutableSetOf<Point>()
             queue.add(Pair(from, 0))
@@ -57,6 +82,7 @@ class Day20 : Day(
             while (queue.isNotEmpty()) {
                 val (current, time) = queue.poll()
                 if (current == to) {
+                    cachedTimes[key] = time
                     return time
                 }
 
@@ -74,73 +100,64 @@ class Day20 : Day(
                 }
             }
 
+            cachedTimes[key] = Int.MAX_VALUE
             return Int.MAX_VALUE // Should not happen if there's a path
         }
 
-        fun findCheats(fastestLegalTime: Int): List<Cheat> {
-            val cheats = mutableListOf<Cheat>()
+        fun findCheats(cheatLength: Int, fastestLegalTime: Int): List<Cheat> {
+            val cheats = mutableSetOf<Cheat>()
 
-            for (startX in 0 until width) {
-                for (startY in 0 until height) {
-                    for (endX in 0 until width) {
-                        for (endY in 0 until height) {
-                            val start = Point(startX, startY)
-                            val end = Point(endX, endY)
-                            val cheat = isValidCheat(start, end, fastestLegalTime)
-                            if (cheat != null) {
-                                cheats.add(cheat)
+            for (x in 0 until width) {
+                for (y in 0 until height) {
+                    if (map[y][x] == '#') {
+                        continue
+                    }
+                    val point = Point(x, y)
+                    cheats.addAll(findCheatsFromPoint(point, cheatLength, fastestLegalTime))
+                }
+            }
+
+            return cheats.toList()
+        }
+
+        private fun findCheatsFromPoint(point: Point, cheatLength: Int, fastestLegalTime: Int): List<Cheat> {
+            val cheats = mutableListOf<Cheat>()
+            val visited = mutableSetOf<Point>()
+
+            fun explore(current: Point, path: List<Point>, remainingCheat: Int) {
+                if (remainingCheat == 0 || current in visited || path.size > fastestLegalTime + cheatLength) {
+                    return // Pruning: Stop if cheat is too long
+                }
+                visited.add(current)
+
+                for (dir in directions) {
+                    val next = Point(current.x + dir.x, current.y + dir.y)
+                    if (next.x in 0 until width && next.y in 0 until height) {
+                        val newPath = path + next
+                        if (map[next.y][next.x] != '#') {
+                            val timeSaved = calculateTimeSaved(point, next, newPath.size, fastestLegalTime)
+                            if (timeSaved >= 0) {
+                                cheats.add(Cheat(point, next, timeSaved))
                             }
                         }
+                        explore(next, newPath, remainingCheat - 1)
                     }
                 }
             }
+
+            explore(point, listOf(point), cheatLength)
             return cheats
         }
 
-        private fun isValidCheat(from: Point, to: Point, fastestLegalTime: Int): Cheat? {
-            if (from == to
-                || from.x !in 0 until width
-                || from.y !in 0 until height
-                || to.x !in 0 until width
-                || to.y !in 0 until height
-                || map[from.y][from.x] == '#'
-                || map[to.y][to.x] == '#'
-            ) {
-                return null
-            }
-
-            val dist = abs(from.x - to.x) + abs(from.y - to.y)
-            if (dist != 2) {
-                return null // Cheat must be exactly 2 moves
-            }
-
+        private fun calculateTimeSaved(from: Point, to: Point, cheatLength: Int, fastestLegalTime: Int): Int {
             val timeToStart = findFastestLegalTime(start, from)
             val timeToEnd = findFastestLegalTime(to, end)
             if (timeToStart == Int.MAX_VALUE || timeToEnd == Int.MAX_VALUE) {
-                return null // Unreachable
+                return -1
             }
 
-            val cheatTime = timeToStart + 2 + timeToEnd
-            val timeSaved = fastestLegalTime - cheatTime
-            if (timeSaved >= 0) {
-                return Cheat(from, to, timeSaved)
-            }
-
-            return null
+            val cheatTime = timeToStart + cheatLength + timeToEnd
+            return fastestLegalTime - cheatTime + 1 // +1 for the time it takes to move to the next point
         }
-    }
-
-    override fun part1(): Int {
-        val limit = if (inputAsList.size < 20) 10 else 100
-        val racetrack = Racetrack(inputAsList)
-
-        val fastestLegalTime = racetrack.findFastestLegalTime(racetrack.start, racetrack.end)
-        val cheats = racetrack.findCheats(fastestLegalTime)
-
-        return cheats.count { it.timeSaved >= limit }
-    }
-
-    override fun part2(): Long {
-        return 0
     }
 }

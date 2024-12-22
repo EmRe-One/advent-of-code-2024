@@ -2,6 +2,11 @@ package tr.emreone.adventofcode.days
 
 import tr.emreone.kotlin_utils.Resources
 import tr.emreone.kotlin_utils.automation.Day
+import tr.emreone.kotlin_utils.math.Direction4
+import tr.emreone.kotlin_utils.math.Point
+import tr.emreone.kotlin_utils.math.plus
+import tr.emreone.kotlin_utils.math.x
+import tr.emreone.kotlin_utils.math.y
 import java.util.*
 
 class Day16 : Day(
@@ -15,37 +20,36 @@ class Day16 : Day(
         val maze = inputAsList
         val rows = maze.size
         val cols = maze[0].length
-        val directions = listOf(Pair(1, 0), Pair(0, 1), Pair(-1, 0), Pair(0, -1)) // East, South, West, North
+
         val start = findPosition(maze, 'S')
         val end = findPosition(maze, 'E')
 
         val visited = Array(rows) { Array(cols) { BooleanArray(4) } }
         val priorityQueue = PriorityQueue<State>()
 
-        priorityQueue.add(State(start.first, start.second, 0, 0)) // Add all directions from Start
+        priorityQueue.add(State(start, Direction4.EAST, 0))
 
         while (priorityQueue.isNotEmpty()) {
-            val (x, y, direction, score) = priorityQueue.poll()
+            val (p, direction, score) = priorityQueue.poll()
 
-            if (Pair(x,y) == end) return score // Reached End Tile
+            if (p == end) return score // Reached End Tile
 
-            if (visited[y][x][direction]) continue
-            visited[y][x][direction] = true
+            if (visited[p.y][p.x][direction.ordinal]) continue
+            visited[p.y][p.x][direction.ordinal] = true
 
             // Option 1: Move Forward
-            val forwardX = x + directions[direction].first
-            val forwardY = y + directions[direction].second
-            if (isValid(forwardX, forwardY, rows, cols, maze)) {
-                priorityQueue.add(State(forwardX, forwardY, direction, score + 1))
+            val forward = p + direction.vector
+            if (isValid(forward, rows, cols, maze)) {
+                priorityQueue.add(State(forward, direction, score + 1))
             }
 
             // Option 2: Rotate Clockwise
-            val clockwiseDir = (direction + 1) % 4
-            priorityQueue.add(State(x, y, clockwiseDir, score + 1000))
+            val clockwiseDir = direction.right
+            priorityQueue.add(State(p, clockwiseDir, score + 1000))
 
             // Option 3: Rotate Counterclockwise
-            val counterclockwiseDir = (direction + 3) % 4
-            priorityQueue.add(State(x, y, counterclockwiseDir, score + 1000))
+            val counterclockwiseDir = direction.left
+            priorityQueue.add(State(p, counterclockwiseDir, score + 1000))
         }
 
         return -1 // Should never reach here
@@ -55,52 +59,50 @@ class Day16 : Day(
         val maze = inputAsList
         val rows = maze.size
         val cols = maze[0].length
-        val directions = listOf(Pair(1, 0), Pair(0, 1), Pair(-1, 0), Pair(0, -1)) // East, South, West, North
+
         val start = findPosition(maze, 'S')
         val end = findPosition(maze, 'E')
 
         val visited = Array(rows) { Array(cols) { IntArray(4) { Int.MAX_VALUE } } }
-        val parent = Array(rows) { Array(cols) { mutableListOf<Pair<Int, Int>>() } } // For backtracking
+        val parent = Array(rows) { Array(cols) { mutableListOf<Point>() } } // For backtracking
 
         val priorityQueue = PriorityQueue<State>()
 
         // Start from S Tile with East direction
-        priorityQueue.add(State(start.first, start.second, 0, 0))
-        visited[start.second][start.first][0] = 0
+        priorityQueue.add(State(start, Direction4.EAST, 0))
 
         while (priorityQueue.isNotEmpty()) {
-            val (x, y, direction, score) = priorityQueue.poll()
+            val (p, direction, score) = priorityQueue.poll()
 
-            if (score > visited[y][x][direction]) continue
+            if (score > visited[p.y][p.x][direction.ordinal]) continue
 
             // Move Forward
-            val forwardX = x + directions[direction].first
-            val forwardY = y + directions[direction].second
-            if (isValid(forwardX, forwardY, rows, cols, maze)) {
+            val forward = p + direction.vector
+            if (isValid(forward, rows, cols, maze)) {
                 val newScore = score + 1
-                if (newScore <= visited[forwardY][forwardX][direction]) {
-                    visited[forwardY][forwardX][direction] = newScore
-                    parent[forwardY][forwardX].add(Pair(x, y))
-                    priorityQueue.add(State(forwardX, forwardY, direction, newScore))
+                if (newScore <= visited[forward.y][forward.x][direction.ordinal]) {
+                    visited[forward.y][forward.x][direction.ordinal] = newScore
+                    parent[forward.y][forward.x].add(p)
+                    priorityQueue.add(State(forward, direction, newScore))
                 }
             }
 
             // Rotate Clockwise
-            val clockwiseDir = (direction + 1) % 4
+            val clockwiseDir = direction.right
             val clockwiseScore = score + 1000
-            if (clockwiseScore <= visited[y][x][clockwiseDir]) {
-                visited[y][x][clockwiseDir] = clockwiseScore
-                parent[y][x].add(Pair(x, y))
-                priorityQueue.add(State(x, y, clockwiseDir, clockwiseScore))
+            if (clockwiseScore <= visited[p.y][p.x][clockwiseDir.ordinal]) {
+                visited[p.y][p.x][clockwiseDir.ordinal] = clockwiseScore
+                parent[p.y][p.x].add(p)
+                priorityQueue.add(State(p, clockwiseDir, clockwiseScore))
             }
 
             // Rotate Counterclockwise
-            val counterclockwiseDir = (direction + 3) % 4
+            val counterclockwiseDir = direction.left
             val counterclockwiseScore = score + 1000
-            if (counterclockwiseScore <= visited[y][x][counterclockwiseDir]) {
-                visited[y][x][counterclockwiseDir] = counterclockwiseScore
-                parent[y][x].add(Pair(x, y))
-                priorityQueue.add(State(x, y, counterclockwiseDir, counterclockwiseScore))
+            if (counterclockwiseScore <= visited[p.y][p.x][counterclockwiseDir.ordinal]) {
+                visited[p.y][p.x][counterclockwiseDir.ordinal] = counterclockwiseScore
+                parent[p.y][p.x].add(p)
+                priorityQueue.add(State(p, counterclockwiseDir, counterclockwiseScore))
             }
         }
 
@@ -112,9 +114,8 @@ class Day16 : Day(
     }
 
     data class State(
-        val x: Int,
-        val y: Int,
-        val direction: Int,
+        val p: Point,
+        val direction: Direction4,
         val score: Int
     ) : Comparable<State> {
         override fun compareTo(other: State): Int = this.score.compareTo(other.score)
@@ -129,8 +130,8 @@ class Day16 : Day(
         throw IllegalArgumentException("Target $target not found in maze")
     }
 
-    private fun isValid(x: Int, y: Int, rows: Int, cols: Int, maze: List<String>): Boolean {
-        return x in 0 until cols && y in 0 until rows && maze[y][x] != '#'
+    private fun isValid(p: Point, rows: Int, cols: Int, maze: List<String>): Boolean {
+        return p.x in 0 until cols && p.y in 0 until rows && maze[p.y][p.x] != '#'
     }
 
     private fun backtrack(x: Int, y: Int, parent: Array<Array<MutableList<Pair<Int, Int>>>>, bestPathTiles: MutableSet<Pair<Int, Int>>) {

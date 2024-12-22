@@ -2,6 +2,8 @@ package tr.emreone.adventofcode.days
 
 import tr.emreone.kotlin_utils.Resources
 import tr.emreone.kotlin_utils.automation.Day
+import tr.emreone.kotlin_utils.math.gcd
+import kotlin.math.abs
 
 class Day13 : Day(
     13,
@@ -10,31 +12,84 @@ class Day13 : Day(
     session = Resources.resourceAsString("session.cookie")
 ) {
 
-    override fun part1(): Int {
-        val machines = inputAsGroups.map {
-            val buttonA = "Button A: X\\+(?<X>\\d+), Y\\+(?<Y>\\d+)".toRegex()
-                .find(it[0])
-                ?.destructured
-                ?.let { (x, y) -> x.toInt() to y.toInt() }
-                ?: throw Exception("Button A not found")
+    class ClawMachine(
+        private val a: Pair<Long, Long>,
+        private val b: Pair<Long, Long>,
+        private val p: Pair<Long, Long>
+    ) {
+        companion object {
+            fun parse(input: List<String>, offset: Long = 0): ClawMachine {
+                assert(input.size == 3) {
+                    "Invalid input size"
+                }
 
-            val buttonB = "Button B: X\\+(?<X>\\d+), Y\\+(?<Y>\\d+)".toRegex()
-                .find(it[1])
-                ?.destructured
-                ?.let { (x, y) -> x.toInt() to y.toInt() }
-                ?: throw Exception("Button B not found")
+                val buttonA = "Button A: X\\+(?<X>\\d+), Y\\+(?<Y>\\d+)".toRegex()
+                    .find(input[0])
+                    ?.destructured
+                    ?.let { (x, y) -> x.toLong() to y.toLong() }
+                    ?: throw Exception("Button A not found")
 
-            val prize = "Prize: X=(?<X>\\d+), Y=(?<Y>\\d+)".toRegex()
-                .find(it[2])
-                ?.destructured
-                ?.let { (x, y) -> x.toInt() to y.toInt() }
-                ?: throw Exception("Prize not found")
+                val buttonB = "Button B: X\\+(?<X>\\d+), Y\\+(?<Y>\\d+)".toRegex()
+                    .find(input[1])
+                    ?.destructured
+                    ?.let { (x, y) -> x.toLong() to y.toLong() }
+                    ?: throw Exception("Button B not found")
 
-            Triple(buttonA, buttonB, prize)
+                val prize = "Prize: X=(?<X>\\d+), Y=(?<Y>\\d+)".toRegex()
+                    .find(input[2])
+                    ?.destructured
+                    ?.let { (x, y) -> x.toLong() + offset to y.toLong() + offset }
+                    ?: throw Exception("Prize not found")
+
+                return ClawMachine(buttonA, buttonB, prize)
+            }
         }
 
-        return machines.sumOf { (aButton, bButton, prize) ->
-            solveClawMachine(aButton, bButton, prize) ?: 0
+        fun calculateMinTokens(): Long? {
+            val (ax, ay) = this.a
+            val (bx, by) = this.b
+            val (px, py) = this.p
+
+            for (aCount in 0..100L) {
+                for (bCount in 0..100L) {
+                    val x = aCount * ax + bCount * bx
+                    val y = aCount * ay + bCount * by
+                    if (x == px && y == py) {
+                        return aCount * 3 + bCount
+                    }
+                }
+            }
+            return null
+        }
+
+        fun calculateMinTokensMathematically(): Long?{
+            val (ax, ay) = this.a
+            val (bx, by) = this.b
+            val (px, py) = this.p
+
+            assert(ax * by - ay * bx != 0L) {
+                "Unsolvable equation"
+            }
+
+            val ca = (1.0 * px * by - py * bx) / (ax * by - ay * bx)
+            val cb = (1.0 * px - ax * ca) / bx
+
+            // check if the result is integer
+            if (ca.toLong().toDouble() == ca && cb.toLong().toDouble() == cb) {
+                return (ca * 3 + cb).toLong()
+            }
+
+            return null
+        }
+    }
+
+    override fun part1(): Long {
+        val machines = inputAsGroups.map {
+            ClawMachine.parse(it)
+        }
+
+        return machines.sumOf { m ->
+            m.calculateMinTokens() ?: 0
         }
     }
 
@@ -42,82 +97,11 @@ class Day13 : Day(
         val offset = 10_000_000_000_000L
 
         val machines = inputAsGroups.map {
-            val buttonA = "Button A: X\\+(?<X>\\d+), Y\\+(?<Y>\\d+)".toRegex()
-                .find(it[0])
-                ?.destructured
-                ?.let { (x, y) -> x.toLong() to y.toLong() }
-                ?: throw Exception("Button A not found")
-
-            val buttonB = "Button B: X\\+(?<X>\\d+), Y\\+(?<Y>\\d+)".toRegex()
-                .find(it[1])
-                ?.destructured
-                ?.let { (x, y) -> x.toLong() to y.toLong() }
-                ?: throw Exception("Button B not found")
-
-            val prize = "Prize: X=(?<X>\\d+), Y=(?<Y>\\d+)".toRegex()
-                .find(it[2])
-                ?.destructured
-                ?.let { (x, y) -> x.toLong() + offset to y.toLong() + offset }
-                ?: throw Exception("Prize not found")
-
-            Triple(buttonA, buttonB, prize)
+            ClawMachine.parse(it, offset)
         }
 
-        return machines.sumOf { (aButton, bButton, prize) ->
-            solveDiophantine(aButton, bButton, prize) ?: 0L
+        return machines.sumOf { m ->
+            m.calculateMinTokensMathematically() ?: 0L
         }
-    }
-
-    private fun solveClawMachine(a: Pair<Int, Int>, b: Pair<Int, Int>, p: Pair<Int, Int>): Int? {
-        val (ax, ay) = a
-        val (bx, by) = b
-        val (px, py) = p
-
-        for (i in 0..100) {
-            for (j in 0..100) {
-                val x = i * ax + j * bx
-                val y = i * ay + j * by
-                if (x == px && y == py) {
-                    return i * 3 + j * 1
-                }
-            }
-        }
-        return null
-    }
-
-    private fun extendedGcd(a: Long, b: Long): Triple<Long, Long, Long> {
-        if (b == 0L) return Triple(a, 1, 0)
-        val (g, x1, y1) = extendedGcd(b, a % b)
-        return Triple(g, y1, x1 - (a / b) * y1)
-    }
-
-    private fun solveDiophantine(a: Pair<Long, Long>, b: Pair<Long, Long>, p: Pair<Long, Long>): Long? {
-        val (ax, ay) = a
-        val (bx, by) = b
-        val (px, py) = p
-
-        // Solve ax * i + bx * j = px and ay * i + by * j = py
-        val (gcdX, x1, y1) = extendedGcd(ax, bx)
-        val (gcdY, x2, y2) = extendedGcd(ay, by)
-
-        // Check if solutions exist
-        if (px % gcdX != 0L || py % gcdY != 0L) return null
-        if (gcdX != gcdY) return null // Both equations must have the same gcd
-
-        // Scale solutions
-        val scaleX = px / gcdX
-        val scaleY = py / gcdY
-        val aX = x1 * scaleX
-        val bX = y1 * scaleX
-        val aY = x2 * scaleY
-        val bY = y2 * scaleY
-
-        // Verify solutions are valid
-        val aa = if (aX >= 0) aX else bY
-        val bb = if (bX >= 0) bX else aY
-        return if (aa >= 0 && bb >= 0)
-            aa * 3 + bb * 1
-        else
-            null
     }
 }

@@ -134,7 +134,12 @@ class Day16 : Day(
         return p.x in 0 until cols && p.y in 0 until rows && maze[p.y][p.x] != '#'
     }
 
-    private fun backtrack(x: Int, y: Int, parent: Array<Array<MutableList<Pair<Int, Int>>>>, bestPathTiles: MutableSet<Pair<Int, Int>>) {
+    private fun backtrack(
+        x: Int,
+        y: Int,
+        parent: Array<Array<MutableList<Pair<Int, Int>>>>,
+        bestPathTiles: MutableSet<Pair<Int, Int>>
+    ) {
         if (!bestPathTiles.add(Pair(x, y))) return // Avoid revisiting tiles
         for ((px, py) in parent[y][x]) {
             backtrack(px, py, parent, bestPathTiles)

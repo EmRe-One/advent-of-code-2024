@@ -48,10 +48,15 @@ class Day12 : Day(
                     n !in points
                 }
 
-                val allEdges = mutableListOf(topEdges, rightEdges, bottomEdges, leftEdges)
+                val allEdges = mutableListOf(
+                    Direction4.NORTH to topEdges,
+                    Direction4.EAST to rightEdges,
+                    Direction4.SOUTH to bottomEdges,
+                    Direction4.WEST to leftEdges
+                )
 
                 val sides = mutableListOf<Set<Point>>()
-                for (edges in allEdges) {
+                for ((dir , edges) in allEdges) {
                     // one of top, right, bottom, left edges
                     val currentEdgeGroup = edges.toMutableList()
 
@@ -67,11 +72,15 @@ class Day12 : Day(
             }
 
         private fun findNeighbors(edge: Point, edges: MutableList<Point>): Set<Point> {
+            val temp = edges.toMutableList()
             val neighbors = mutableSetOf(edge)
-            for (other in edges) {
-                if (neighbors.any { isNeighbor(it, other) }) {
-                    neighbors.add(other)
+            while (true) {
+                val newNeighbors = temp.filter { p -> neighbors.any { isNeighbor(it, p) } }
+                if (newNeighbors.isEmpty()) {
+                    break
                 }
+                neighbors.addAll(newNeighbors)
+                temp.removeAll(newNeighbors)
             }
             return neighbors
         }
@@ -83,10 +92,10 @@ class Day12 : Day(
         }
     }
 
-    class Garden(private val input: List<String>) {
+    class Garden(input: List<String>) {
         private val garden = input.map { it.toList() }
-        val height = garden.size
-        val width = garden[0].size
+        private val height = garden.size
+        private val width = garden[0].size
 
         private val directions = listOf(Pair(0, -1), Pair(1, 0), Pair(0, 1), Pair(-1, 0))
         val regions = mutableListOf<FencableRegion>()
@@ -106,11 +115,11 @@ class Day12 : Day(
             }
         }
 
-        fun getPlantTypeAt(x: Int, y: Int): Char {
+        private fun getPlantTypeAt(x: Int, y: Int): Char {
             return garden[y][x]
         }
 
-        fun floodFill(
+        private fun floodFill(
             visited: Array<BooleanArray>,
             p: Point,
             plantType: Char,
@@ -130,22 +139,6 @@ class Day12 : Day(
                 floodFill(visited, Point(nx, ny), plantType, region)
             }
         }
-
-        /*fun calculateSides(plantType: Char, region: List<Pair<Int, Int>>): Int {
-            var perimeter = this.calculatePerimeter(plantType, region)
-
-            // Korrektur für innere Kanten
-            var innerEdges = 0
-            for ((y, x) in region) {
-                if (y > 0 && garden[y - 1][x] == plantType) innerEdges++
-                if (y < this.height - 1 && garden[y + 1][x] == plantType) innerEdges++
-                if (x > 0 && garden[y][x - 1] == plantType) innerEdges++
-                if (x < this.width - 1 && garden[y][x + 1] == plantType) innerEdges++
-            }
-            perimeter -= innerEdges / 2 // Jede innere Kante wird zweimal gezählt
-
-            return perimeter
-        }*/
     }
 
     private val garden = Garden(inputAsList)
@@ -164,9 +157,6 @@ class Day12 : Day(
     override fun part2(): Int {
         return garden.regions.sumOf {
             println("Plant type: ${it.plantType}, size: ${it.area}, sides: ${it.sides.size}")
-//            it.sides.forEach { side ->
-//                println("-> Side: $side")
-//            }
             it.area * it.sides.size
         }
     }

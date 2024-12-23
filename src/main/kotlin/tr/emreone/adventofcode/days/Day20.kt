@@ -2,7 +2,9 @@ package tr.emreone.adventofcode.days
 
 import tr.emreone.kotlin_utils.Resources
 import tr.emreone.kotlin_utils.automation.Day
+import tr.emreone.kotlin_utils.math.Direction4
 import tr.emreone.kotlin_utils.math.Point
+import tr.emreone.kotlin_utils.math.plus
 import tr.emreone.kotlin_utils.math.x
 import tr.emreone.kotlin_utils.math.y
 import java.util.*
@@ -31,14 +33,16 @@ class Day20 : Day(
         val fastestLegalTime = racetrack.findFastestLegalTime(racetrack.start, racetrack.end)
         val cheats = racetrack.findCheats(20, fastestLegalTime)
 
+        cheats.sortedBy { it.timeSaved }.groupBy { it.timeSaved }.forEach { (timeSaved, cheats) ->
+            println("Time saved: $timeSaved, Cheats: ${cheats.size}")
+        }
+
         return cheats.count { it.timeSaved >= limit }
     }
 
     data class Cheat(val start: Point, val end: Point, val timeSaved: Int)
 
     class Racetrack(input: List<String>) {
-        private val directions = listOf(Point(1, 0), Point(0, 1), Point(-1, 0), Point(0, -1))
-
         private val map = input.map { it.toCharArray() }
         private val cachedTimes = mutableMapOf<Pair<Point, Point>, Int>()
         private val height = map.size
@@ -86,8 +90,8 @@ class Day20 : Day(
                     return time
                 }
 
-                for (dir in directions) {
-                    val next = Point(current.x + dir.x, current.y + dir.y)
+                for (dir in Direction4.entries) {
+                    val next = current + dir.vector
                     if (
                         next.x in 0 until width
                         && next.y in 0 until height
@@ -130,8 +134,8 @@ class Day20 : Day(
                 }
                 visited.add(current)
 
-                for (dir in directions) {
-                    val next = Point(current.x + dir.x, current.y + dir.y)
+                for (dir in Direction4.entries) {
+                    val next = current + dir.vector
                     if (next.x in 0 until width && next.y in 0 until height) {
                         val newPath = path + next
                         if (map[next.y][next.x] != '#') {

@@ -48,10 +48,10 @@ class Day22 : Day(
 
             // if the sequence is already seen, skip, because monkey would sell at first opportunity
             val seen = mutableSetOf<List<Long>>()
-            buyer.windowed(5).forEach { window ->
+             buyer.windowed(5).forEach buyerLoop@ { window ->
                 val seq = window.windowed(2).map { it[1] - it[0] }
                 if (seen.contains(seq)) {
-                    return@forEach
+                    return@buyerLoop
                 }
 
                 seen.add(seq)

@@ -19,7 +19,7 @@ class Day21 : Day(
 
     data class KeypadButton(val symbol: Char, val position: Point)
 
-    class Keypad(val layout: List<List<Char?>>) {
+    class Keypad(layout: List<List<Char?>>) {
 
         private val positions = layout.mapIndexed { y, row ->
             row.mapIndexed { x, symbol ->
@@ -30,6 +30,7 @@ class Day21 : Day(
             }.filterNotNull()
         }.flatten()
         private val sequences: MutableMap<Pair<KeypadButton, KeypadButton>, List<String>> = mutableMapOf()
+        private val cache: MutableMap<Pair<String, Int>, Long> = mutableMapOf()
 
         init {
             for(from in positions) {
@@ -71,30 +72,53 @@ class Day21 : Day(
                 }
             }
         }
-    }
 
-    data class RobotArm(val name: String, val keypad: Keypad, var initialPosition: Point) {
+        fun getAllOptions(code: String): List<String> {
+            val options = "A${code}".windowed(2).map {pair ->
+                val firstButton = this.positions.first { it.symbol == pair[0] }
+                val secondButton = this.positions.first { it.symbol == pair[1] }
+                this.sequences[Pair(firstButton, secondButton)] ?: listOf()
+            }
 
-        var currentPosition = initialPosition
-
-        fun move(direction: Char) {
-            val (x, y) = currentPosition
-            val dir = Direction4.entries.first { it.symbol == direction }
-
-            currentPosition += dir.vector
-
-            // Überprüfe, ob die neue Position gültig ist
-            if (
-                currentPosition.first !in keypad.layout.indices
-                || currentPosition.second !in keypad.layout[0].indices
-                || keypad.layout[currentPosition.first][currentPosition.second] == null
-            ) {
-                throw IllegalStateException("Ungültige Bewegung")
+            // return the cartesian product of all options joined to a single string
+            return options.fold(listOf("")) { acc, list ->
+                acc.flatMap { accOption ->
+                    list.map { listOption ->
+                        accOption + listOption
+                    }
+                }
             }
         }
 
-        fun pressButton(): Char? {
-            return this.keypad.layout[this.currentPosition.x][this.currentPosition.y]
+        fun computeLengthAtDepth(code: String, depth: Int = 2): Long {
+            // If already calculated, return the value
+            if (cache.containsKey(Pair(code, depth))) {
+                return cache[Pair(code, depth)]!!
+            }
+
+            // If depth is 1, return the sum of the lengths of the sequences
+            if (depth == 1) {
+                return "A${code}".windowed(2).sumOf { pair ->
+                    val keypadButton1 = this.positions.first { it.symbol == pair[0] }
+                    val keypadButton2 = this.positions.first { it.symbol == pair[1] }
+
+                    this.sequences[keypadButton1 to keypadButton2]?.first()!!.length.toLong() ?: 0L
+                }
+            }
+
+            // Otherwise, calculate the sum of the lengths of the sequences
+            var length = 0L
+            "A${code}".windowed(2).forEach { pair ->
+                val keypadButton1 = this.positions.first { it.symbol == pair[0] }
+                val keypadButton2 = this.positions.first { it.symbol == pair[1] }
+
+                length += this.sequences[keypadButton1 to keypadButton2]!!.minOf { subseq ->
+                    this.computeLengthAtDepth(subseq, depth - 1)
+                }
+            }
+
+            cache[Pair(code, depth)] = length
+            return length
         }
     }
 
@@ -114,123 +138,41 @@ class Day21 : Day(
         )
     )
 
-    private val robotArm1 = RobotArm("Robot1", numericKeypad, Point(3, 2))
-    private val robotArm2 = RobotArm("Robot2", directionalKeypad, Point(0, 2))
-    private val robotArm3 = RobotArm("Robot3", directionalKeypad, Point(0, 2))
-
-    private fun generateCode(commands: String, robotArm: RobotArm = robotArm1): String {
-        var code = ""
-        for (command in commands) {
-            when (command) {
-                '^', 'v', '<', '>' -> robotArm.move(command)
-                'A' -> code += robotArm.pressButton()
-            }
-        }
-        return code
+    private fun calculateComplexity(code: String, commandsLength: Long): Long {
+        val numericValue = code.filter { it.isDigit() }.toLongOrNull() ?: 0L
+        return commandsLength * numericValue
     }
 
-    private fun findShortestSequences(code: String, keypad: Keypad): List<String> {
-
-
-        return listOf()
-    }
-
-
-    private fun findShortestSequence(code: String): String {
-        val queue = LinkedList<Pair<String, RobotArm>>()
-        val visited = mutableSetOf<Pair<Point, String>>()
-
-        // start with robotArm3
-        queue.add(Pair("", robotArm3))
-        visited.add(Pair(robotArm3.currentPosition, ""))
-
-        while (queue.isNotEmpty()) {
-            val (currentCommands, currentArm) = queue.poll()
-            log {
-                "Checking sequence $currentCommands with robotArm $currentArm"
-            }
-
-            // Simuliere Roboterarm 3 auf dem Richtungspad
-            val commandsForRobotArm2 = generateCode(currentCommands, currentArm)
-            log {
-                "Commands for robotArm2: $commandsForRobotArm2"
-            }
-
-            // Simuliere Roboterarm 2 auf dem Richtungspad, um die Befehle für Roboterarm 1 zu erhalten
-            val commandsForRobotArm1 = generateCode(commandsForRobotArm2, robotArm2)
-            log {
-                "Commands for robotArm1: $commandsForRobotArm1"
-            }
-
-            // Simuliere Roboterarm 1 auf dem numerischen Keypad, um den finalen Code zu erhalten
-            val currentCode = generateCode(commandsForRobotArm1, robotArm1)
-            log {
-                "Generated code: $currentCode"
-            }
-
-            if (currentCode == code) {
-                return currentCommands
-            }
-
-            for (direction in listOf('^', 'v', '<', '>')) {
-                try {
-                    val newArm = currentArm.copy()
-                    newArm.move(direction)
-
-                    val newCommands = currentCommands + direction
-
-                    if (Pair(newArm.currentPosition, newCommands) !in visited) {
-                        queue.add(Pair(newCommands, newArm))
-                        visited.add(Pair(newArm.currentPosition, newCommands))
-                    }
-                } catch (e: IllegalStateException) {
-                    // Ignoriere ungültige Bewegungen
-                }
-            }
-
-            val newCommands = currentCommands + 'A'
-            if (Pair(currentArm.currentPosition, newCommands) !in visited) {
-                queue.add(Pair(newCommands, currentArm))
-                visited.add(Pair(currentArm.currentPosition, newCommands))
-            }
-        }
-
-        return "" // Keine Lösung gefunden
-    }
-
-    private fun calculateComplexity(code: String, commands: String): Int {
-        val numericValue = code.filter { it.isDigit() }.toIntOrNull() ?: 0
-        return commands.length * numericValue
-    }
-
-    override fun part1(): Int {
-        print(numericKeypad)
-
-
-
+    override fun part1(): Long {
         return inputAsList.sumOf { code ->
-            log {
-                "Calculating complexity for code $code"
-            }
-            val shortestSequence = findShortestSequence(code)
+            // first get options of robot 1
+            var nextOptions = numericKeypad.getAllOptions(code)
 
-            calculateComplexity(code, shortestSequence)
+            for (i in 0 until 2) {
+                nextOptions = nextOptions.flatMap { directionalKeypad.getAllOptions(it) }
+                    .groupBy { it.length }
+                    .toSortedMap()
+                    .entries
+                    .first()
+                    .value
+            }
+
+            calculateComplexity(code, nextOptions.first().length.toLong())
         }
-//        for (code in codes) {
-//            val sequence = findShortestSequence(State(yourKeypad, Point(2, 2)), code)
-//            val robotSequence = findShortestSequence(State(robotKeypad, Point(0, 2)), sequence)
-//            val secondRobotSequence = findShortestSequence(State(robotKeypad, Point(0, 2)), robotSequence)
-//            val finalSequence = findShortestSequence(State(numericKeypad, Point(3, 2)), secondRobotSequence)
-//            val complexity = finalSequence.length * "\\d+".toRegex().findAll(code).first().value.toInt()
-//            totalComplexity += complexity
-//            println("$code: $finalSequence (Complexity: $complexity)")
-//        }
-//
-//        return totalComplexity
     }
 
     override fun part2(): Long {
-        return 0
+        return inputAsList.sumOf { code ->
+            // first get options of robot 1
+            val nextOptions = numericKeypad.getAllOptions(code)
+
+            val length = nextOptions.minOf { option ->
+                directionalKeypad.computeLengthAtDepth(option, 25)
+            }
+
+            calculateComplexity(code, length)
+        }
+
     }
 
 }

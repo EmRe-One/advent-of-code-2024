@@ -2,6 +2,7 @@ package tr.emreone.adventofcode.days
 
 import tr.emreone.kotlin_utils.Resources
 import tr.emreone.kotlin_utils.automation.Day
+import tr.emreone.kotlin_utils.automation.log
 import tr.emreone.kotlin_utils.math.Direction4
 import tr.emreone.kotlin_utils.math.Point
 import tr.emreone.kotlin_utils.math.plus
@@ -16,30 +17,77 @@ class Day16 : Day(
     session = Resources.resourceAsString("session.cookie")
 ) {
 
+    class Maze(input: List<String>) {
+        val maze = input
+        val height = maze.size
+        val width = maze[0].length
+
+        val start = findPosition('S')
+        val end = findPosition('E')
+
+        private fun findPosition(symbol: Char): Point {
+            for (y in maze.indices) {
+                for (x in maze[y].indices) {
+                    if (maze[y][x] == symbol) return Point(x, y)
+                }
+            }
+            throw IllegalArgumentException("Target '$symbol' not found in maze")
+        }
+
+        fun isValidPosition(p: Point): Boolean {
+            return p.x in 0 until this.width && p.y in 0 until this.height && maze[p.y][p.x] != '#'
+        }
+
+        fun backtrack(endStates: Set<State>, backtrack: Map<State, Set<State>>): Set<Point> {
+            val bestPathTiles = mutableSetOf<Point>()
+
+            val visited = mutableSetOf<State>()
+            val queue = LinkedList<State>()
+            queue.addAll(endStates)
+            bestPathTiles.addAll(endStates.map { it.p })
+
+            while (queue.isNotEmpty()) {
+                val currentState = queue.poll()
+
+                for (nextState in backtrack.getOrDefault(currentState, emptySet())) {
+                    if (!visited.add(nextState)) continue
+
+                    queue.add(nextState)
+                    bestPathTiles.add(nextState.p)
+                }
+            }
+
+            return bestPathTiles
+        }
+    }
+
+    data class State(
+        val p: Point,
+        val direction: Direction4,
+        val score: Int
+    ) : Comparable<State> {
+        override fun compareTo(other: State): Int = this.score.compareTo(other.score)
+    }
+
+    private val maze = Maze(inputAsList)
+
     override fun part1(): Int {
-        val maze = inputAsList
-        val rows = maze.size
-        val cols = maze[0].length
-
-        val start = findPosition(maze, 'S')
-        val end = findPosition(maze, 'E')
-
-        val visited = Array(rows) { Array(cols) { BooleanArray(4) } }
+        val visited = Array(maze.height) { Array(maze.width) { BooleanArray(4) } }
         val priorityQueue = PriorityQueue<State>()
 
-        priorityQueue.add(State(start, Direction4.EAST, 0))
+        priorityQueue.add(State(maze.start, Direction4.EAST, 0))
 
         while (priorityQueue.isNotEmpty()) {
             val (p, direction, score) = priorityQueue.poll()
 
-            if (p == end) return score // Reached End Tile
+            if (p == maze.end) return score // Reached End Tile
 
             if (visited[p.y][p.x][direction.ordinal]) continue
             visited[p.y][p.x][direction.ordinal] = true
 
             // Option 1: Move Forward
             val forward = p + direction.vector
-            if (isValid(forward, rows, cols, maze)) {
+            if (maze.isValidPosition(forward)) {
                 priorityQueue.add(State(forward, direction, score + 1))
             }
 
@@ -56,94 +104,63 @@ class Day16 : Day(
     }
 
     override fun part2(): Int {
-        val maze = inputAsList
-        val rows = maze.size
-        val cols = maze[0].length
-
-        val start = findPosition(maze, 'S')
-        val end = findPosition(maze, 'E')
-
-        val visited = Array(rows) { Array(cols) { IntArray(4) { Int.MAX_VALUE } } }
-        val parent = Array(rows) { Array(cols) { mutableListOf<Point>() } } // For backtracking
-
         val priorityQueue = PriorityQueue<State>()
+        val lowestCosts = mutableMapOf<Pair<Point, Direction4>, Int>()
+        var bestCost = Int.MAX_VALUE
+        val backtrack = mutableMapOf<State, Set<State>>() // For backtracking
+        val endStates = mutableSetOf<State>()
 
         // Start from S Tile with East direction
-        priorityQueue.add(State(start, Direction4.EAST, 0))
+        priorityQueue.add(State(maze.start, Direction4.EAST, 0))
+        lowestCosts[Pair(maze.start, Direction4.EAST)] = 0
 
         while (priorityQueue.isNotEmpty()) {
-            val (p, direction, score) = priorityQueue.poll()
+            val currentState = priorityQueue.poll()
 
-            if (score > visited[p.y][p.x][direction.ordinal]) continue
+            val (p, direction, score) = currentState
+            if (score > lowestCosts.getOrDefault(Pair(p, direction), Int.MAX_VALUE)) continue
 
-            // Move Forward
-            val forward = p + direction.vector
-            if (isValid(forward, rows, cols, maze)) {
-                val newScore = score + 1
-                if (newScore <= visited[forward.y][forward.x][direction.ordinal]) {
-                    visited[forward.y][forward.x][direction.ordinal] = newScore
-                    parent[forward.y][forward.x].add(p)
-                    priorityQueue.add(State(forward, direction, newScore))
+            if (maze.maze[p.y][p.x] == 'E') {
+                if (score > bestCost) break
+                bestCost = score
+                endStates.add(currentState)
+            }
+
+            listOf(
+                State(p + direction.vector, direction, score + 1),   // Move Forward
+                State(p, direction.right, score + 1000),                // Rotate Clockwise
+                State(p, direction.left, score + 1000)                  // Rotate Counterclockwise
+            ).forEach { state ->
+                if (!maze.isValidPosition(state.p)) return@forEach
+
+                val lowest = lowestCosts.getOrDefault(Pair(state.p, state.direction), Int.MAX_VALUE)
+
+                if (state.score > lowest) return@forEach
+
+                if (state.score < lowest) {
+                    backtrack[state] = emptySet()
+                    lowestCosts[Pair(state.p, state.direction)] = state.score
                 }
+                backtrack[state] = backtrack.getOrDefault(state, emptySet()) + currentState
+                priorityQueue.add(state)
             }
+        }
 
-            // Rotate Clockwise
-            val clockwiseDir = direction.right
-            val clockwiseScore = score + 1000
-            if (clockwiseScore <= visited[p.y][p.x][clockwiseDir.ordinal]) {
-                visited[p.y][p.x][clockwiseDir.ordinal] = clockwiseScore
-                parent[p.y][p.x].add(p)
-                priorityQueue.add(State(p, clockwiseDir, clockwiseScore))
+        log {
+            backtrack.entries.joinToString("\n") { (state, nextStates) ->
+                "$state -> $nextStates"
             }
-
-            // Rotate Counterclockwise
-            val counterclockwiseDir = direction.left
-            val counterclockwiseScore = score + 1000
-            if (counterclockwiseScore <= visited[p.y][p.x][counterclockwiseDir.ordinal]) {
-                visited[p.y][p.x][counterclockwiseDir.ordinal] = counterclockwiseScore
-                parent[p.y][p.x].add(p)
-                priorityQueue.add(State(p, counterclockwiseDir, counterclockwiseScore))
-            }
+            "End States: $endStates"
         }
 
         // Backtrack to find all tiles part of best paths
-        val bestPathTiles = mutableSetOf<Pair<Int, Int>>()
-        backtrack(end.first, end.second, parent, bestPathTiles)
+        val bestPathTiles = maze.backtrack(endStates, backtrack)
+
+        log {
+            "Best Path Tiles: $bestPathTiles"
+        }
 
         return bestPathTiles.size
-    }
-
-    data class State(
-        val p: Point,
-        val direction: Direction4,
-        val score: Int
-    ) : Comparable<State> {
-        override fun compareTo(other: State): Int = this.score.compareTo(other.score)
-    }
-
-    private fun findPosition(maze: List<String>, target: Char): Pair<Int, Int> {
-        for (y in maze.indices) {
-            for (x in maze[y].indices) {
-                if (maze[y][x] == target) return Pair(x, y)
-            }
-        }
-        throw IllegalArgumentException("Target $target not found in maze")
-    }
-
-    private fun isValid(p: Point, rows: Int, cols: Int, maze: List<String>): Boolean {
-        return p.x in 0 until cols && p.y in 0 until rows && maze[p.y][p.x] != '#'
-    }
-
-    private fun backtrack(
-        x: Int,
-        y: Int,
-        parent: Array<Array<MutableList<Pair<Int, Int>>>>,
-        bestPathTiles: MutableSet<Pair<Int, Int>>
-    ) {
-        if (!bestPathTiles.add(Pair(x, y))) return // Avoid revisiting tiles
-        for ((px, py) in parent[y][x]) {
-            backtrack(px, py, parent, bestPathTiles)
-        }
     }
 
 }

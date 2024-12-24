@@ -7,7 +7,7 @@ fun main() {
 
     solve<Day24>(false) {
         Resources.resourceAsList("day24_example.txt")
-            .joinToString("\n") part1 2_024L part2 0
+            .joinToString("\n") part1 2_024L part2 ""
     }
 
 }

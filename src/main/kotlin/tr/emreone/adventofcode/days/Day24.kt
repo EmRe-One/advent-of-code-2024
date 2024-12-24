@@ -19,7 +19,7 @@ class Day24 : Day(
     private val formulas = inputAsGroups[1].associate { line ->
         val (input1, operation, input2: String, output) = line.replace(" -> ", " ").split(" ")
         output to Triple(operation, input1, input2)
-    }
+    }.toMutableMap()
 
     private fun prettyPrint(wire: String, depth: Int = 0): String {
         if ("([xy])\\d+".toRegex().matches(wire)) {
@@ -36,8 +36,11 @@ class Day24 : Day(
     }
 
     private fun verifyIntermediateXor(wire: String, num: Int): Boolean {
-        log { "Verifying intermediate XOR $wire, $num" }
+        // log { "Verifying intermediate XOR $wire, $num" }
+        if (wire !in formulas) return false
+
         val (op, x, y) = formulas[wire]!!
+
         if (op != "XOR") return false
         val xName = "x" + num.toString().padStart(2, '0')
         val yName = "y" + num.toString().padStart(2, '0')
@@ -46,7 +49,9 @@ class Day24 : Day(
     }
 
     private fun verifyCarryBit(wire: String, num: Int): Boolean {
-        log { "Verifying carry bit $wire, $num" }
+        // log { "Verifying carry bit $wire, $num" }
+        if (wire !in formulas) return false
+
         val (op, x, y) = formulas[wire]!!
 
         if (num == 1) {
@@ -59,7 +64,9 @@ class Day24 : Day(
     }
 
     private fun verifyDirectCarry(wire: String, num: Int): Boolean {
-        log { "Verifying direct carry $wire, $num" }
+        // log { "Verifying direct carry $wire, $num" }
+        if (wire !in formulas) return false
+
         val (op, x, y) = formulas[wire]!!
 
         if (op != "AND") return false
@@ -70,7 +77,9 @@ class Day24 : Day(
     }
 
     private fun verifyRecarry(wire: String, num: Int): Boolean {
-        log { "Verifying recarry $wire, $num" }
+        // log { "Verifying recarry $wire, $num" }
+        if (wire !in formulas) return false
+
         val (op, x, y) = formulas[wire]!!
 
         if (op != "AND") return false
@@ -79,8 +88,9 @@ class Day24 : Day(
                 || verifyIntermediateXor(y, num) && verifyCarryBit(x, num)
     }
 
-    fun verifyZ(wire: String, num: Int): Boolean {
-        log { "Verifying $wire, $num" }
+    private fun verifyZ(wire: String, num: Int): Boolean {
+        // log { "Verifying z $wire, $num" }
+        if (wire !in formulas) return false
 
         val (op, x, y) = formulas[wire]!!
         if (op != "XOR") return false
@@ -116,7 +126,7 @@ class Day24 : Day(
                 append("z")
                 append(i.toString().padStart(2, '0'))
             }
-            println("Calculating $wire")
+
             if (wire !in formulas) break
             zWires.add(calc(wire))
             i++
@@ -127,27 +137,53 @@ class Day24 : Day(
 
         log {
             "Binary output: $binaryOutput \n" +
-            "Decimal output: $decimalOutput"
+                    "Decimal output: $decimalOutput"
         }
 
         return decimalOutput
     }
 
-    override fun part2(): Long {
-        var i = 0
-        while (true) {
-            val name = buildString {
-                append("z")
-                append(i.toString().padStart(2, '0'))
+    override fun part2(): String {
+        fun progress(): Int {
+            var i = 0
+
+            while (true) {
+                if (!verifyZ("z" + i.toString().padStart(2, '0'), i)) {
+                    // log { "Found the first invalid wire: z$i" }
+                    break
+                }
+                i++
             }
-            if (!verifyZ(name, i)) {
-                log { "Found the first invalid wire: $name" }
-                break
-            }
-            i++
+
+            return i
         }
 
-        return 0
+        val swaps = mutableListOf<String>()
+        repeat(4) {
+            val p = progress()
+
+            outer@ for (x in formulas.keys) {
+                inner@ for (y in formulas.keys) {
+                    if (x == y) continue@inner
+
+                    var temp = formulas[x]!!
+                    formulas[x] = formulas[y]!!
+                    formulas[y] = temp
+
+                    if (progress() > p) {
+                        swaps.add(x)
+                        swaps.add(y)
+                        break@outer
+                    }
+
+                    temp = formulas[x]!!
+                    formulas[x] = formulas[y]!!
+                    formulas[y] = temp
+                }
+            }
+        }
+
+        return swaps.sorted().joinToString(",")
     }
 
 }
